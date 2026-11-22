@@ -34,9 +34,12 @@
 // Two things reach the host stack from a container, and nothing else:
 //
 //   - neighbour discovery, from the endpoint's own addresses only;
-//   - packets to the resolver, port 53, which are marked O6PN_MARK_HOST. The
-//     resolver address is only a local address for packets carrying that
-//     mark, so it cannot be reached through any other interface.
+//   - packets to the resolver, port 53.
+//
+// Both are marked O6PN_MARK_HOST. The resolver address is only a local
+// address for packets carrying that mark, so it cannot be reached through any
+// other interface. The mark also lets a firewall's reverse-path check find the
+// endpoint's route, which the host's main table does not have.
 //
 // A container can only send to another host if that host has an endpoint in
 // the container's network (o6pn_net_nodes), so a tenant cannot make its host
@@ -56,7 +59,7 @@
 #define O6PN_V4_BASE 0x0a000000U
 #define O6PN_V4_MASK 0x00ffffffU
 #define O6PN_MARK 0x6f36706eU /* "o6pn": put on its way by the datapath */
-/* Verified resolver traffic handed to the host. Keep in sync with
+/* Verified traffic handed to the host. Keep in sync with
  * datapath.go, which routes on it. */
 #define O6PN_MARK_HOST 0x6f36706fU
 
@@ -346,6 +349,7 @@ static __always_inline int from_container_v6(struct __sk_buff *skb, const struct
 			    !v6_is_ll_of(&ip6->saddr, self->cmac) && !v6_is_unspecified(&ip6->saddr))
 				return drop(STAT_DROP_SPOOF);
 			if ((b0 == 0xfe && (b1 & 0xc0) == 0x80) || (b0 == 0xff && b1 == 0x02)) {
+				skb->mark = O6PN_MARK_HOST;
 				count(STAT_TO_HOST);
 				return TC_ACT_OK;
 			}

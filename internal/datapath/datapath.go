@@ -51,6 +51,7 @@ const (
 	// can reach the resolver, or make the host answer from its address.
 	dnsLocalTable        = 5354
 	dnsLocalRulePriority = 99
+	markedRulePriority   = 101
 	// hostMark mirrors O6PN_MARK_HOST in bpf/open6pn.c.
 	hostMark = 0x6f36706f
 )
@@ -373,6 +374,16 @@ func (d *Datapath) setupRouting() error {
 	marked.Priority = dnsLocalRulePriority
 	if err := netlink.RuleAdd(marked); err != nil && !errors.Is(err, unix.EEXIST) {
 		return fmt.Errorf("resolver address rule: %w", err)
+	}
+
+	endpoints := netlink.NewRule()
+	endpoints.Family = netlink.FAMILY_V6
+	endpoints.Mark = hostMark
+	endpoints.Mask = &mask
+	endpoints.Table = dnsTable
+	endpoints.Priority = markedRulePriority
+	if err := netlink.RuleAdd(endpoints); err != nil && !errors.Is(err, unix.EEXIST) {
+		return fmt.Errorf("endpoint route rule: %w", err)
 	}
 	return nil
 }
