@@ -88,6 +88,8 @@ stop_daemon() {
 for n in n1 n2 n3; do
 	docker run -d --privileged --name "open6pn-$n" --hostname "$n" --network "$NET" "$IMAGE" sleep infinity >/dev/null || exit 1
 	h "$n" /usr/lib/systemd/systemd-udevd --daemon >/dev/null 2>&1 || exit 1
+	h "$n" ip6tables -t mangle -A PREROUTING -m rpfilter --loose --validmark -j RETURN || exit 1
+	h "$n" ip6tables -t mangle -A PREROUTING -j DROP || exit 1
 done
 if [ "$PLACEHOLDERS" -gt 0 ]; then
 	t=$(h n1 date +%s%N)

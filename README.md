@@ -57,6 +57,24 @@ This produces `bin/open6pn-linux-<arch>`. The compiled eBPF object is committed;
 
 With Nix, `nix build` produces `result/bin/open6pn` on Linux and runs the unit tests, and `nix develop` gives a shell with Go on Linux and macOS.
 
+### NixOS
+
+The flake has a NixOS module, `nixosModules.default`:
+
+```nix
+{
+  imports = [ open6pn.nixosModules.default ];
+  services.open6pn = {
+    enable = true;
+    etcd.endpoints = [ "https://etcd-1:2379" ];
+    etcd.caFile = "/run/secrets/etcd-ca.pem";
+    advertise = "203.0.113.10";
+  };
+}
+```
+
+It runs the daemon with its state in `/var/lib/open6pn`, loads WireGuard, opens the WireGuard port, lets the host's resolver answer containers through the NixOS firewall (iptables or nftables), and keeps dhcpcd off the interfaces open6pn creates. `nix build .#checks.x86_64-linux.nixos` runs it in three NixOS VMs: etcd and two hosts.
+
 ## Quick start
 
 On every host:
